@@ -1,11 +1,25 @@
 import React, { useRef } from "react";
-import { Animated, Image, StyleSheet, useWindowDimensions } from "react-native";
+import { Animated, Image, useWindowDimensions } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 
 const MAX_SCALE = 4;
+const DOUBLE_TAP_SCALE = 2.5;
 
-export default function ZoomableImage({ source }: { source: number }) {
-  const { width, height } = useWindowDimensions();
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
+type Props = {
+  source: number;
+  naturalWidth: number;
+  naturalHeight: number;
+};
+
+export default function ZoomableImage({ source, naturalWidth, naturalHeight }: Props) {
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+
+  const baseWidth = screenWidth;
+  const baseHeight = (naturalHeight / naturalWidth) * baseWidth;
 
   const scale = useRef(new Animated.Value(1)).current;
   const translateX = useRef(new Animated.Value(0)).current;
@@ -13,65 +27,80 @@ export default function ZoomableImage({ source }: { source: number }) {
 
   const scaleValue = useRef(1);
   const savedScale = useRef(1);
-  const translateXValue = useRef(0);
-  const translateYValue = useRef(0);
-  const savedTranslateX = useRef(0);
-  const savedTranslateY = useRef(0);
+  const tx = useRef(0);
+  const ty = useRef(0);
+  const savedTx = useRef(0);
+  const savedTy = useRef(0);
 
-  const reset = () => {
-    Animated.parallel([
-      Animated.timing(scale, { toValue: 1, duration: 200, useNativeDriver: true }),
-      Animated.timing(translateX, { toValue: 0, duration: 200, useNativeDriver: true }),
-      Animated.timing(translateY, { toValue: 0, duration: 200, useNativeDriver: true }),
-    ]).start();
-    scaleValue.current = 1;
-    savedScale.current = 1;
-    translateXValue.current = 0;
-    translateYValue.current = 0;
-    savedTranslateX.current = 0;
-    savedTranslateY.current = 0;
+  // Content starts fully scrolled to the top: translateY 0 shows the hymn's
+  // start, and the user scrolls down (drags up) to reach the rest.
+  const boundsFor = (currentScale: number) => {
+    const w = baseWidth * currentScale;
+    const h = baseHeight * currentScale;
+    return {
+      minX: Math.min(0, screenWidth - w),
+      maxX: 0,
+      minY: Math.min(0, screenHeight - h),
+      maxY: 0,
+    };
   };
+
+  const applyPosition = (currentScale: number, nextX: number, nextY: number, animate: boolean) => {
+    const b = boundsFor(currentScale);
+    const clampedX = clamp(nextX, b.minX, b.maxX);
+    const clampedY = clamp(nextY, b.minY, b.maxY);
+    tx.current = clampedX;
+    ty.current = clampedY;
+    if (animate) {
+      Animated.parallel([
+        Animated.timing(translateX, { toValue: clampedX, duration: 180, useNativeDriver: true }),
+        Animated.timing(translateY, { toValue: clampedY, duration: 180, useNativeDriver: true }),
+      ]).start();
+    } else {
+      translateX.setValue(clampedX);
+      translateY.setValue(clampedY);
+    }
+  };
+
+  const setScale = (nextScale: number, animate: boolean) => {
+    scaleValue.current = nextScale;
+    if (animate) {
+      Animated.timing(scale, { toValue: nextScale, duration: 180, useNativeDriver: true }).start();
+    } else {
+      scale.setValue(nextScale);
+    }
+  };
+
+  const pan = Gesture.Pan()
+    .onUpdate((event) => {
+      applyPosition(scaleValue.current, savedTx.current + event.translationX, savedTy.current + event.translationY, false);
+    })
+    .onEnd(() => {
+      savedTx.current = tx.current;
+      savedTy.current = ty.current;
+    });
 
   const pinch = Gesture.Pinch()
     .onUpdate((event) => {
-      const next = Math.min(Math.max(savedScale.current * event.scale, 1), MAX_SCALE);
-      scaleValue.current = next;
-      scale.setValue(next);
+      const next = clamp(savedScale.current * event.scale, 1, MAX_SCALE);
+      setScale(next, false);
+      applyPosition(next, tx.current, ty.current, false);
     })
     .onEnd(() => {
-      if (scaleValue.current < 1.05) {
-        reset();
-      } else {
-        savedScale.current = scaleValue.current;
-      }
-    });
-
-  const pan = Gesture.Pan()
-    .minPointers(2)
-    .onUpdate((event) => {
-      if (scaleValue.current <= 1) return;
-      const nextX = savedTranslateX.current + event.translationX;
-      const nextY = savedTranslateY.current + event.translationY;
-      translateXValue.current = nextX;
-      translateYValue.current = nextY;
-      translateX.setValue(nextX);
-      translateY.setValue(nextY);
-    })
-    .onEnd(() => {
-      savedTranslateX.current = translateXValue.current;
-      savedTranslateY.current = translateYValue.current;
+      savedScale.current = scaleValue.current;
+      savedTx.current = tx.current;
+      savedTy.current = ty.current;
     });
 
   const doubleTap = Gesture.Tap()
     .numberOfTaps(2)
     .onEnd(() => {
-      if (scaleValue.current > 1) {
-        reset();
-      } else {
-        scaleValue.current = 2.5;
-        savedScale.current = 2.5;
-        Animated.timing(scale, { toValue: 2.5, duration: 200, useNativeDriver: true }).start();
-      }
+      const next = scaleValue.current > 1 ? 1 : DOUBLE_TAP_SCALE;
+      setScale(next, true);
+      savedScale.current = next;
+      applyPosition(next, next === 1 ? 0 : tx.current, next === 1 ? 0 : ty.current, true);
+      savedTx.current = next === 1 ? 0 : tx.current;
+      savedTy.current = next === 1 ? 0 : ty.current;
     });
 
   const composed = Gesture.Simultaneous(Gesture.Simultaneous(pinch, pan), doubleTap);
@@ -79,18 +108,18 @@ export default function ZoomableImage({ source }: { source: number }) {
   return (
     <GestureDetector gesture={composed}>
       <Animated.View
-        style={[
-          { width, height },
-          styles.center,
-          { transform: [{ translateX }, { translateY }, { scale }] },
-        ]}
+        style={{
+          width: baseWidth,
+          height: baseHeight,
+          transform: [{ translateX }, { translateY }, { scale }],
+        }}
       >
-        <Image source={source} style={{ width, height }} resizeMode="contain" />
+        <Image
+          source={source}
+          style={{ width: baseWidth, height: baseHeight }}
+          resizeMode="contain"
+        />
       </Animated.View>
     </GestureDetector>
   );
 }
-
-const styles = StyleSheet.create({
-  center: { alignItems: "center", justifyContent: "center" },
-});

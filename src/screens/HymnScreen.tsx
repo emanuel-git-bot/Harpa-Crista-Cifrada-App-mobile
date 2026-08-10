@@ -1,6 +1,5 @@
-import React, { useState } from "react";
+import React from "react";
 import { Pressable, StatusBar, StyleSheet, Text, View } from "react-native";
-import PagerView from "react-native-pager-view";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { hymns } from "../data/hymnManifest";
 import { useFavorites } from "../context/FavoritesContext";
@@ -13,7 +12,6 @@ export default function HymnScreen({ route, navigation }: Props) {
   const { number } = route.params;
   const hymn = hymns.find((h) => h.number === number);
   const { isFavorite, toggleFavorite } = useFavorites();
-  const [pageIndex, setPageIndex] = useState(0);
 
   if (!hymn) {
     return (
@@ -27,16 +25,9 @@ export default function HymnScreen({ route, navigation }: Props) {
     <View style={styles.container}>
       <StatusBar hidden />
 
-      <PagerView
-        style={styles.pager}
-        onPageSelected={(event) => setPageIndex(event.nativeEvent.position)}
-      >
-        {hymn.pages.map((source, index) => (
-          <View key={index} style={styles.page}>
-            <ZoomableImage source={source} />
-          </View>
-        ))}
-      </PagerView>
+      <View style={styles.viewer}>
+        <ZoomableImage source={hymn.image} naturalWidth={hymn.width} naturalHeight={hymn.height} />
+      </View>
 
       <View style={styles.header}>
         <Pressable hitSlop={12} onPress={() => navigation.goBack()}>
@@ -49,22 +40,13 @@ export default function HymnScreen({ route, navigation }: Props) {
           <Text style={styles.headerStar}>{isFavorite(hymn.number) ? "★" : "☆"}</Text>
         </Pressable>
       </View>
-
-      {hymn.pages.length > 1 && (
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            Página {pageIndex + 1} de {hymn.pages.length}
-          </Text>
-        </View>
-      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#000" },
-  pager: { flex: 1 },
-  page: { flex: 1 },
+  viewer: { flex: 1, overflow: "hidden" },
   notFound: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, backgroundColor: "#fff" },
   notFoundText: { fontSize: 16, color: "#333" },
   header: {
@@ -90,15 +72,4 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   headerStar: { color: "#e0a30f", fontSize: 22 },
-  footer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    alignItems: "center",
-    paddingBottom: 24,
-    paddingTop: 8,
-    backgroundColor: "rgba(0,0,0,0.55)",
-  },
-  footerText: { color: "#fff", fontSize: 13 },
 });

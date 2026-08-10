@@ -6,6 +6,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const sizeOf = require("image-size").default || require("image-size");
 
 const ROOT = path.join(__dirname, "..");
 const HYMNS_DIR = path.join(ROOT, "assets", "hymns");
@@ -43,18 +44,22 @@ function main() {
     for (const folder of folders) {
       const number = Number(folder.name);
       const folderPath = path.join(HYMNS_DIR, folder.name);
-      const pages = fs
+      const imageFiles = fs
         .readdirSync(folderPath)
         .filter((file) => IMAGE_EXT.has(path.extname(file).toLowerCase()))
-        .sort((a, b) => leadingNumber(a) - leadingNumber(b))
-        .map((file) => toRequirePath(path.join(folderPath, file)));
+        .sort((a, b) => leadingNumber(a) - leadingNumber(b));
 
-      if (pages.length === 0) continue;
+      if (imageFiles.length === 0) continue;
+
+      const imagePath = path.join(folderPath, imageFiles[0]);
+      const { width, height } = sizeOf(fs.readFileSync(imagePath));
 
       hymns.push({
         number,
         title: titles[String(number)] || `Hino nº ${number}`,
-        pages,
+        image: toRequirePath(imagePath),
+        width,
+        height,
       });
     }
   }
@@ -66,14 +71,15 @@ function main() {
   lines.push("export type Hymn = {");
   lines.push("  number: number;");
   lines.push("  title: string;");
-  lines.push("  pages: number[];");
+  lines.push("  image: number;");
+  lines.push("  width: number;");
+  lines.push("  height: number;");
   lines.push("};");
   lines.push("");
   lines.push("export const hymns: Hymn[] = [");
   for (const hymn of hymns) {
-    const pagesLiteral = hymn.pages.map((p) => `require('${p}')`).join(", ");
     lines.push(
-      `  { number: ${hymn.number}, title: ${JSON.stringify(hymn.title)}, pages: [${pagesLiteral}] },`
+      `  { number: ${hymn.number}, title: ${JSON.stringify(hymn.title)}, image: require('${hymn.image}'), width: ${hymn.width}, height: ${hymn.height} },`
     );
   }
   lines.push("];");
