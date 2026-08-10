@@ -39,3 +39,13 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# gerado por scripts/generate-manifest.js — rode `npm run gerar-hinos`
+/src/data/hymnManifest.ts
+
+# PDF fonte (material de terceiros, não faz parte do app)
+*.pdf
+
+# configuração local do Claude Code
+.claude/settings.local.json
+.claude/scheduled_tasks.lock

@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "_harpa_scaffold",
-    "slug": "_harpa_scaffold",
+    "name": "Harpa com Cifra",
+    "slug": "harpa-cifra",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -20,6 +20,9 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-image"
+    ]
   }
 }
