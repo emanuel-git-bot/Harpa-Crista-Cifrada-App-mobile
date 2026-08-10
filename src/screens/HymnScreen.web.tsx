@@ -1,17 +1,30 @@
 import React, { useState } from "react";
-import { Pressable, StatusBar, StyleSheet, Text, View } from "react-native";
-import PagerView from "react-native-pager-view";
+import {
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Pressable,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { hymns } from "../data/hymnManifest";
 import { useFavorites } from "../context/FavoritesContext";
 import ZoomableImage from "../components/ZoomableImage";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 
+// Web fallback: react-native-pager-view is native-only (no web support), so
+// this build swaps in a plain horizontal ScrollView pager instead. Used for
+// browser smoke-testing — the real target platform is Android/iOS.
 type Props = NativeStackScreenProps<RootStackParamList, "Hymn">;
 
 export default function HymnScreen({ route, navigation }: Props) {
   const { number } = route.params;
   const hymn = hymns.find((h) => h.number === number);
+  const { width } = useWindowDimensions();
   const { isFavorite, toggleFavorite } = useFavorites();
   const [pageIndex, setPageIndex] = useState(0);
 
@@ -23,20 +36,27 @@ export default function HymnScreen({ route, navigation }: Props) {
     );
   }
 
+  const onScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const index = Math.round(event.nativeEvent.contentOffset.x / width);
+    setPageIndex(index);
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar hidden />
 
-      <PagerView
-        style={styles.pager}
-        onPageSelected={(event) => setPageIndex(event.nativeEvent.position)}
+      <ScrollView
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={onScrollEnd}
       >
         {hymn.pages.map((source, index) => (
-          <View key={index} style={styles.page}>
+          <View key={index} style={{ width, height: "100%" }}>
             <ZoomableImage source={source} />
           </View>
         ))}
-      </PagerView>
+      </ScrollView>
 
       <View style={styles.header}>
         <Pressable hitSlop={12} onPress={() => navigation.goBack()}>
@@ -63,8 +83,6 @@ export default function HymnScreen({ route, navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#000" },
-  pager: { flex: 1 },
-  page: { flex: 1 },
   notFound: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, backgroundColor: "#fff" },
   notFoundText: { fontSize: 16, color: "#333" },
   header: {
