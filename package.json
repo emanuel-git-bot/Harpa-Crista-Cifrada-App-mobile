@@ -26,11 +26,12 @@
     "typescript": "~5.9.2"
   },
   "scripts": {
-    "gerar-hinos": "node scripts/generate-manifest.js",
-    "start": "npm run gerar-hinos && expo start",
-    "android": "npm run gerar-hinos && expo start --android",
-    "ios": "npm run gerar-hinos && expo start --ios",
-    "web": "npm run gerar-hinos && expo start --web"
-  },
+  "gerar-hinos": "node scripts/generate-manifest.js",
+  "start": "npm run gerar-hinos && expo start",
+  "android": "npm run gerar-hinos && expo start --android",
+  "ios": "npm run gerar-hinos && expo start --ios",
+  "web": "npm run gerar-hinos && expo start --web",
+  "eas-build-post-install": "npm run gerar-hinos"
+},
   "private": true
 }
