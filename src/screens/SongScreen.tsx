@@ -5,6 +5,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useLibrary } from "../context/LibraryContext";
 import { useFavorites } from "../context/FavoritesContext";
 import ZoomableImage from "../components/ZoomableImage";
+import { colors } from "../theme";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Song">;
@@ -58,9 +59,14 @@ export default function SongScreen({ route, navigation }: Props) {
         </Text>
         <View style={styles.headerActions}>
           {!category.builtin && (
-            <Pressable hitSlop={12} onPress={confirmDelete}>
-              <Text style={styles.headerDelete}>🗑</Text>
-            </Pressable>
+            <>
+              <Pressable hitSlop={12} onPress={() => navigation.navigate("EditSong", { categoryId, songId })}>
+                <Text style={styles.headerEdit}>✎</Text>
+              </Pressable>
+              <Pressable hitSlop={12} onPress={confirmDelete}>
+                <Text style={styles.headerDelete}>🗑</Text>
+              </Pressable>
+            </>
           )}
           <Pressable hitSlop={12} onPress={() => toggleFavorite(song.id)}>
             <Text style={styles.headerStar}>{isFavorite(song.id) ? "★" : "☆"}</Text>
@@ -98,6 +104,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   headerActions: { flexDirection: "row", alignItems: "center", gap: 16 },
-  headerStar: { color: "#e0a30f", fontSize: 22 },
+  headerStar: { color: colors.accent, fontSize: 22 },
   headerDelete: { fontSize: 18 },
+  headerEdit: { color: "#fff", fontSize: 19 },
 });

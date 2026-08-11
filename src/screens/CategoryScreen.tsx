@@ -10,13 +10,14 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useLibrary } from "../context/LibraryContext";
 import { useFavorites } from "../context/FavoritesContext";
 import { normalize } from "../utils/normalize";
 import PromptModal from "../components/PromptModal";
+import { colors } from "../theme";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import type { Song } from "../types";
 
@@ -24,8 +25,9 @@ type Props = NativeStackScreenProps<RootStackParamList, "Category">;
 
 export default function CategoryScreen({ route, navigation }: Props) {
   const { categoryId } = route.params;
-  const { categories, songsFor, addSong } = useLibrary();
+  const { categories, songsFor, addSong, moveSong } = useLibrary();
   const { favorites, isFavorite, toggleFavorite } = useFavorites();
+  const insets = useSafeAreaInsets();
 
   const category = categories.find((c) => c.id === categoryId);
   const songs = songsFor(categoryId);
@@ -34,6 +36,10 @@ export default function CategoryScreen({ route, navigation }: Props) {
   const [onlyFavorites, setOnlyFavorites] = useState(false);
   const [pendingImages, setPendingImages] = useState<ImagePicker.ImagePickerAsset[] | null>(null);
   const [adding, setAdding] = useState(false);
+
+  // Reordering only makes sense against the canonical (unsearched,
+  // unfiltered) order, and only for categories the user can actually edit.
+  const canReorder = !category?.builtin && !search && !onlyFavorites;
 
   const filtered = useMemo(() => {
     const query = normalize(search);
@@ -81,7 +87,7 @@ export default function CategoryScreen({ route, navigation }: Props) {
     }
   };
 
-  const renderItem = ({ item }: { item: Song }) => (
+  const renderItem = ({ item, index }: { item: Song; index: number }) => (
     <Pressable
       style={styles.card}
       onPress={() => navigation.navigate("Song", { categoryId, songId: item.id })}
@@ -95,6 +101,28 @@ export default function CategoryScreen({ route, navigation }: Props) {
         <Text style={styles.title} numberOfLines={1}>
           {item.title}
         </Text>
+        {canReorder && (
+          <View style={styles.reorderButtons}>
+            <Pressable
+              hitSlop={8}
+              disabled={index === 0}
+              onPress={() => moveSong(categoryId, item.id, "up")}
+            >
+              <Text style={[styles.reorderText, index === 0 && styles.reorderTextDisabled]}>▲</Text>
+            </Pressable>
+            <Pressable
+              hitSlop={8}
+              disabled={index === filtered.length - 1}
+              onPress={() => moveSong(categoryId, item.id, "down")}
+            >
+              <Text
+                style={[styles.reorderText, index === filtered.length - 1 && styles.reorderTextDisabled]}
+              >
+                ▼
+              </Text>
+            </Pressable>
+          </View>
+        )}
         <Pressable hitSlop={12} onPress={() => toggleFavorite(item.id)}>
           <Text style={styles.star}>{isFavorite(item.id) ? "★" : "☆"}</Text>
         </Pressable>
@@ -168,7 +196,11 @@ export default function CategoryScreen({ route, navigation }: Props) {
       )}
 
       {!category.builtin && (
-        <Pressable style={styles.addButton} onPress={pickImages} disabled={adding}>
+        <Pressable
+          style={[styles.addButton, { bottom: insets.bottom + 56 }]}
+          onPress={pickImages}
+          disabled={adding}
+        >
           {adding ? (
             <ActivityIndicator color="#fff" />
           ) : (
@@ -194,7 +226,7 @@ export default function CategoryScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
+  container: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -203,7 +235,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 8,
   },
-  backButton: { fontSize: 15, color: "#2d5f3f", fontWeight: "600", width: 90 },
+  backButton: { fontSize: 15, color: colors.primary, fontWeight: "600", width: 90 },
   headerTitle: { flex: 1, fontSize: 17, fontWeight: "700", textAlign: "center" },
   search: {
     marginHorizontal: 16,
@@ -211,27 +243,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 10,
-    backgroundColor: "#f0f0f0",
+    backgroundColor: colors.inputBackground,
     fontSize: 16,
   },
   tabs: {
     flexDirection: "row",
     marginHorizontal: 16,
     marginBottom: 8,
-    backgroundColor: "#f0f0f0",
+    backgroundColor: colors.inputBackground,
     borderRadius: 10,
     padding: 4,
   },
   tab: { flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: "center" },
-  tabActive: { backgroundColor: "#2d5f3f" },
-  tabText: { fontSize: 14, fontWeight: "600", color: "#555" },
+  tabActive: { backgroundColor: colors.primary },
+  tabText: { fontSize: 14, fontWeight: "600", color: colors.textMuted },
   tabTextActive: { color: "#fff" },
   listContent: { paddingHorizontal: 16, paddingBottom: 96 },
   card: {
-    backgroundColor: "#fff",
+    backgroundColor: colors.card,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#eee",
+    borderColor: colors.cardBorder,
     overflow: "hidden",
   },
   cardHeader: {
@@ -240,27 +272,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  thumbnail: { width: "100%", height: 150, backgroundColor: "#f0f0f0" },
+  thumbnail: { width: "100%", height: 150, backgroundColor: colors.inputBackground },
   numberBadge: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "#2d5f3f",
+    backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 10,
   },
   numberText: { color: "#fff", fontWeight: "700", fontSize: 13 },
-  title: { flex: 1, fontSize: 16, color: "#222", fontWeight: "600" },
-  star: { fontSize: 22, color: "#e0a30f", marginLeft: 8 },
+  title: { flex: 1, fontSize: 16, color: colors.textDark, fontWeight: "600" },
+  reorderButtons: { flexDirection: "row", gap: 10, marginLeft: 8 },
+  reorderText: { fontSize: 15, color: colors.primary },
+  reorderTextDisabled: { opacity: 0.25 },
+  star: { fontSize: 22, color: colors.accent, marginLeft: 8 },
   empty: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32 },
   emptyTitle: { fontSize: 18, fontWeight: "700", marginBottom: 8, textAlign: "center" },
-  emptyText: { fontSize: 14, color: "#666", textAlign: "center", lineHeight: 20 },
+  emptyText: { fontSize: 14, color: colors.textMuted, textAlign: "center", lineHeight: 20 },
   addButton: {
     position: "absolute",
     right: 16,
     bottom: 24,
-    backgroundColor: "#2d5f3f",
+    backgroundColor: colors.primary,
     paddingVertical: 14,
     paddingHorizontal: 22,
     borderRadius: 28,

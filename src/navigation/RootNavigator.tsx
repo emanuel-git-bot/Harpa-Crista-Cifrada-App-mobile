@@ -4,11 +4,13 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import HomeScreen from "../screens/HomeScreen";
 import CategoryScreen from "../screens/CategoryScreen";
 import SongScreen from "../screens/SongScreen";
+import EditSongScreen from "../screens/EditSongScreen";
 
 export type RootStackParamList = {
   Home: undefined;
   Category: { categoryId: string };
   Song: { categoryId: string; songId: string };
+  EditSong: { categoryId: string; songId: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -24,6 +26,7 @@ export default function RootNavigator() {
           component={SongScreen}
           options={{ presentation: "fullScreenModal", animation: "fade" }}
         />
+        <Stack.Screen name="EditSong" component={EditSongScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

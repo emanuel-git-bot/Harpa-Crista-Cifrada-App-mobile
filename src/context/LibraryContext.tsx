@@ -15,6 +15,8 @@ type AddSongParams = {
   pickedImages: { uri: string; width: number; height: number }[];
 };
 
+type PickedImage = { uri: string; width: number; height: number };
+
 type LibraryContextValue = {
   categories: Category[];
   loading: boolean;
@@ -23,6 +25,15 @@ type LibraryContextValue = {
   deleteCategory: (categoryId: string) => Promise<void>;
   addSong: (categoryId: string, params: AddSongParams) => Promise<void>;
   deleteSong: (categoryId: string, songId: string) => Promise<void>;
+  moveSong: (categoryId: string, songId: string, direction: "up" | "down") => Promise<void>;
+  moveSongImage: (
+    categoryId: string,
+    songId: string,
+    imageIndex: number,
+    direction: "up" | "down"
+  ) => Promise<void>;
+  removeSongImage: (categoryId: string, songId: string, imageIndex: number) => Promise<void>;
+  addSongImages: (categoryId: string, songId: string, pickedImages: PickedImage[]) => Promise<void>;
 };
 
 const LibraryContext = createContext<LibraryContextValue | undefined>(undefined);
@@ -51,6 +62,10 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       categoryId === HARPA_CATEGORY_ID ? harpaSongs : songsByCategory[categoryId] ?? [],
     [songsByCategory]
   );
+
+  const setSongs = useCallback((categoryId: string, songs: Song[]) => {
+    setSongsByCategory((prev) => ({ ...prev, [categoryId]: songs }));
+  }, []);
 
   const createCategory = useCallback(async (name: string) => {
     const category = await store.createCategory(name);
@@ -85,9 +100,65 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
+  const moveSong = useCallback(
+    async (categoryId: string, songId: string, direction: "up" | "down") => {
+      const next = await store.moveSong(categoryId, songId, direction);
+      setSongs(categoryId, next);
+    },
+    [setSongs]
+  );
+
+  const moveSongImage = useCallback(
+    async (categoryId: string, songId: string, imageIndex: number, direction: "up" | "down") => {
+      const next = await store.moveSongImage(categoryId, songId, imageIndex, direction);
+      setSongs(categoryId, next);
+    },
+    [setSongs]
+  );
+
+  const removeSongImage = useCallback(
+    async (categoryId: string, songId: string, imageIndex: number) => {
+      const next = await store.removeSongImage(categoryId, songId, imageIndex);
+      setSongs(categoryId, next);
+    },
+    [setSongs]
+  );
+
+  const addSongImages = useCallback(
+    async (categoryId: string, songId: string, pickedImages: PickedImage[]) => {
+      const next = await store.addSongImages(categoryId, songId, pickedImages);
+      setSongs(categoryId, next);
+    },
+    [setSongs]
+  );
+
   const value = useMemo<LibraryContextValue>(
-    () => ({ categories, loading, songsFor, createCategory, deleteCategory, addSong, deleteSong }),
-    [categories, loading, songsFor, createCategory, deleteCategory, addSong, deleteSong]
+    () => ({
+      categories,
+      loading,
+      songsFor,
+      createCategory,
+      deleteCategory,
+      addSong,
+      deleteSong,
+      moveSong,
+      moveSongImage,
+      removeSongImage,
+      addSongImages,
+    }),
+    [
+      categories,
+      loading,
+      songsFor,
+      createCategory,
+      deleteCategory,
+      addSong,
+      deleteSong,
+      moveSong,
+      moveSongImage,
+      removeSongImage,
+      addSongImages,
+    ]
   );
 
   return <LibraryContext.Provider value={value}>{children}</LibraryContext.Provider>;
