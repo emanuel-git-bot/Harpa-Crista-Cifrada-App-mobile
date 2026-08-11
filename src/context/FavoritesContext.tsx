@@ -2,25 +2,25 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from "
 import { loadFavorites, saveFavorites } from "../storage/favorites";
 
 type FavoritesContextValue = {
-  favorites: number[];
-  isFavorite: (hymnNumber: number) => boolean;
-  toggleFavorite: (hymnNumber: number) => void;
+  favorites: string[];
+  isFavorite: (songId: string) => boolean;
+  toggleFavorite: (songId: string) => void;
 };
 
 const FavoritesContext = createContext<FavoritesContextValue | undefined>(undefined);
 
 export function FavoritesProvider({ children }: { children: React.ReactNode }) {
-  const [favorites, setFavorites] = useState<number[]>([]);
+  const [favorites, setFavorites] = useState<string[]>([]);
 
   useEffect(() => {
     loadFavorites().then(setFavorites);
   }, []);
 
-  const toggleFavorite = (hymnNumber: number) => {
+  const toggleFavorite = (songId: string) => {
     setFavorites((current) => {
-      const next = current.includes(hymnNumber)
-        ? current.filter((n) => n !== hymnNumber)
-        : [...current, hymnNumber];
+      const next = current.includes(songId)
+        ? current.filter((id) => id !== songId)
+        : [...current, songId];
       saveFavorites(next);
       return next;
     });
@@ -29,7 +29,7 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo(
     () => ({
       favorites,
-      isFavorite: (hymnNumber: number) => favorites.includes(hymnNumber),
+      isFavorite: (songId: string) => favorites.includes(songId),
       toggleFavorite,
     }),
     [favorites]

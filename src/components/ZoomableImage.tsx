@@ -1,49 +1,56 @@
 import React, { useRef } from "react";
-import { Animated, Image, useWindowDimensions } from "react-native";
+import { Animated, Image, useWindowDimensions, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import type { SongImage } from "../types";
 
 const MAX_SCALE = 4;
 const DOUBLE_TAP_SCALE = 2.5;
+const GAP_BETWEEN_IMAGES = 10;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
 type Props = {
-  source: number;
-  naturalWidth: number;
-  naturalHeight: number;
+  images: SongImage[];
 };
 
-export default function ZoomableImage({ source, naturalWidth, naturalHeight }: Props) {
+export default function ZoomableImage({ images }: Props) {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
 
   const baseWidth = screenWidth;
-  const baseHeight = (naturalHeight / naturalWidth) * baseWidth;
+  const layout = images.map((img) => (img.height / img.width) * baseWidth);
+  const baseHeight =
+    layout.reduce((sum, h) => sum + h, 0) + GAP_BETWEEN_IMAGES * Math.max(0, images.length - 1);
 
-  const scale = useRef(new Animated.Value(1)).current;
-  const translateX = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(0)).current;
-
-  const scaleValue = useRef(1);
-  const savedScale = useRef(1);
-  const tx = useRef(0);
-  const ty = useRef(0);
-  const savedTx = useRef(0);
-  const savedTy = useRef(0);
-
-  // Content starts fully scrolled to the top: translateY 0 shows the hymn's
-  // start, and the user scrolls down (drags up) to reach the rest.
+  // When content is smaller than the screen along an axis, it's centered on
+  // that axis (fixed position, nothing to scroll); otherwise it's clamped
+  // between fully-visible-start (0) and fully-visible-end.
   const boundsFor = (currentScale: number) => {
     const w = baseWidth * currentScale;
     const h = baseHeight * currentScale;
+    const x = w <= screenWidth ? (screenWidth - w) / 2 : undefined;
+    const y = h <= screenHeight ? (screenHeight - h) / 2 : undefined;
     return {
-      minX: Math.min(0, screenWidth - w),
-      maxX: 0,
-      minY: Math.min(0, screenHeight - h),
-      maxY: 0,
+      minX: x ?? screenWidth - w,
+      maxX: x ?? 0,
+      minY: y ?? screenHeight - h,
+      maxY: y ?? 0,
     };
   };
+
+  const initialBounds = boundsFor(1);
+
+  const scale = useRef(new Animated.Value(1)).current;
+  const translateX = useRef(new Animated.Value(initialBounds.maxX)).current;
+  const translateY = useRef(new Animated.Value(initialBounds.maxY)).current;
+
+  const scaleValue = useRef(1);
+  const savedScale = useRef(1);
+  const tx = useRef(initialBounds.maxX);
+  const ty = useRef(initialBounds.maxY);
+  const savedTx = useRef(initialBounds.maxX);
+  const savedTy = useRef(initialBounds.maxY);
 
   const applyPosition = (currentScale: number, nextX: number, nextY: number, animate: boolean) => {
     const b = boundsFor(currentScale);
@@ -98,9 +105,12 @@ export default function ZoomableImage({ source, naturalWidth, naturalHeight }: P
       const next = scaleValue.current > 1 ? 1 : DOUBLE_TAP_SCALE;
       setScale(next, true);
       savedScale.current = next;
-      applyPosition(next, next === 1 ? 0 : tx.current, next === 1 ? 0 : ty.current, true);
-      savedTx.current = next === 1 ? 0 : tx.current;
-      savedTy.current = next === 1 ? 0 : ty.current;
+      const resetBounds = boundsFor(next);
+      const nextX = next === 1 ? resetBounds.maxX : tx.current;
+      const nextY = next === 1 ? resetBounds.maxY : ty.current;
+      applyPosition(next, nextX, nextY, true);
+      savedTx.current = nextX;
+      savedTy.current = nextY;
     });
 
   const composed = Gesture.Simultaneous(Gesture.Simultaneous(pinch, pan), doubleTap);
@@ -114,11 +124,22 @@ export default function ZoomableImage({ source, naturalWidth, naturalHeight }: P
           transform: [{ translateX }, { translateY }, { scale }],
         }}
       >
-        <Image
-          source={source}
-          style={{ width: baseWidth, height: baseHeight }}
-          resizeMode="contain"
-        />
+        {images.map((img, index) => (
+          <View
+            key={index}
+            style={{
+              width: baseWidth,
+              height: layout[index],
+              marginBottom: index < images.length - 1 ? GAP_BETWEEN_IMAGES : 0,
+            }}
+          >
+            <Image
+              source={img.source}
+              style={{ width: baseWidth, height: layout[index] }}
+              resizeMode="contain"
+            />
+          </View>
+        ))}
       </Animated.View>
     </GestureDetector>
   );

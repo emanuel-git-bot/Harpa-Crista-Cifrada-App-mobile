@@ -2,11 +2,13 @@ import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import HomeScreen from "../screens/HomeScreen";
-import HymnScreen from "../screens/HymnScreen";
+import CategoryScreen from "../screens/CategoryScreen";
+import SongScreen from "../screens/SongScreen";
 
 export type RootStackParamList = {
   Home: undefined;
-  Hymn: { number: number };
+  Category: { categoryId: string };
+  Song: { categoryId: string; songId: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -16,9 +18,10 @@ export default function RootNavigator() {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen name="Category" component={CategoryScreen} />
         <Stack.Screen
-          name="Hymn"
-          component={HymnScreen}
+          name="Song"
+          component={SongScreen}
           options={{ presentation: "fullScreenModal", animation: "fade" }}
         />
       </Stack.Navigator>

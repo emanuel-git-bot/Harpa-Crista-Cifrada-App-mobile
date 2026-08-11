@@ -1,154 +1,135 @@
-import React, { useMemo, useState } from "react";
-import {
-  FlatList,
-  Pressable,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import React, { useState } from "react";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { hymns, type Hymn } from "../data/hymnManifest";
-import { useFavorites } from "../context/FavoritesContext";
-import { normalize } from "../utils/normalize";
+import { useLibrary } from "../context/LibraryContext";
+import PromptModal from "../components/PromptModal";
 import type { RootStackParamList } from "../navigation/RootNavigator";
+import type { Category } from "../types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Home">;
 
+const CARD_COLORS = ["#2d5f3f", "#8a4b2d", "#2d4f8a", "#7a2d8a", "#8a7c2d", "#2d8a7a"];
+
+function colorFor(id: string) {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+  return CARD_COLORS[hash % CARD_COLORS.length];
+}
+
 export default function HomeScreen({ navigation }: Props) {
-  const [search, setSearch] = useState("");
-  const [onlyFavorites, setOnlyFavorites] = useState(false);
-  const { favorites, isFavorite, toggleFavorite } = useFavorites();
+  const { categories, songsFor, createCategory } = useLibrary();
+  const [promptVisible, setPromptVisible] = useState(false);
 
-  const filtered = useMemo(() => {
-    const query = normalize(search);
-    return hymns.filter((hymn) => {
-      if (onlyFavorites && !favorites.includes(hymn.number)) return false;
-      if (!query) return true;
-      return (
-        String(hymn.number).includes(query) || normalize(hymn.title).includes(query)
-      );
-    });
-  }, [search, onlyFavorites, favorites]);
+  const handleCreate = async (name: string) => {
+    setPromptVisible(false);
+    const category = await createCategory(name);
+    navigation.navigate("Category", { categoryId: category.id });
+  };
 
-  const renderItem = ({ item }: { item: Hymn }) => (
-    <Pressable
-      style={styles.row}
-      onPress={() => navigation.navigate("Hymn", { number: item.number })}
-    >
-      <View style={styles.numberBadge}>
-        <Text style={styles.numberText}>{item.number}</Text>
-      </View>
-      <Text style={styles.title} numberOfLines={1}>
-        {item.title}
-      </Text>
-      <Pressable hitSlop={12} onPress={() => toggleFavorite(item.number)}>
-        <Text style={styles.star}>{isFavorite(item.number) ? "★" : "☆"}</Text>
+  const renderItem = ({ item }: { item: Category }) => {
+    const count = songsFor(item.id).length;
+    return (
+      <Pressable
+        style={styles.card}
+        onPress={() => navigation.navigate("Category", { categoryId: item.id })}
+      >
+        <View style={[styles.avatar, { backgroundColor: colorFor(item.id) }]}>
+          <Text style={styles.avatarLetter}>{item.name.charAt(0).toUpperCase()}</Text>
+        </View>
+        <View style={styles.cardBody}>
+          <Text style={styles.cardTitle} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <Text style={styles.cardSubtitle}>
+            {count} {count === 1 ? "item" : "itens"}
+            {item.builtin ? " · letra e cifra" : ""}
+          </Text>
+        </View>
+        <Text style={styles.chevron}>›</Text>
       </Pressable>
-    </Pressable>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.header}>Harpa com Cifra</Text>
-
-      <TextInput
-        style={styles.search}
-        placeholder="Buscar por número ou título..."
-        placeholderTextColor="#8a8a8a"
-        value={search}
-        onChangeText={setSearch}
-        autoCorrect={false}
-      />
-
-      <View style={styles.tabs}>
-        <Pressable
-          style={[styles.tab, !onlyFavorites && styles.tabActive]}
-          onPress={() => setOnlyFavorites(false)}
-        >
-          <Text style={[styles.tabText, !onlyFavorites && styles.tabTextActive]}>
-            Todos
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[styles.tab, onlyFavorites && styles.tabActive]}
-          onPress={() => setOnlyFavorites(true)}
-        >
-          <Text style={[styles.tabText, onlyFavorites && styles.tabTextActive]}>
-            Favoritos
-          </Text>
-        </Pressable>
+      <View style={styles.hero}>
+        <Text style={styles.heroTitle}>🎵 Meu Cancioneiro</Text>
+        <Text style={styles.heroSubtitle}>Letras, cifras e louvores, tudo num lugar só</Text>
       </View>
 
-      {hymns.length === 0 ? (
-        <View style={styles.empty}>
-          <Text style={styles.emptyTitle}>Nenhum hino encontrado</Text>
-          <Text style={styles.emptyText}>
-            Adicione imagens em assets/hymns/&lt;número&gt;/ e rode `npm start`
-            novamente. Veja assets/hymns/README.md para o passo a passo.
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={filtered}
-          keyExtractor={(item) => String(item.number)}
-          renderItem={renderItem}
-          contentContainerStyle={styles.listContent}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-          keyboardShouldPersistTaps="handled"
-        />
-      )}
+      <FlatList
+        data={categories}
+        keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+        contentContainerStyle={styles.listContent}
+        ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+        ListFooterComponent={
+          <Pressable style={styles.newCategoryButton} onPress={() => setPromptVisible(true)}>
+            <Text style={styles.newCategoryButtonText}>+ Nova categoria</Text>
+          </Pressable>
+        }
+      />
+
+      <PromptModal
+        visible={promptVisible}
+        title="Nova categoria"
+        placeholder="Ex: Corinhos, Músicas..."
+        confirmLabel="Criar"
+        onCancel={() => setPromptVisible(false)}
+        onConfirm={handleCreate}
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
-  header: {
-    fontSize: 22,
-    fontWeight: "700",
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
-  },
-  search: {
-    marginHorizontal: 16,
-    marginBottom: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: "#f0f0f0",
-    fontSize: 16,
-  },
-  tabs: {
-    flexDirection: "row",
-    marginHorizontal: 16,
-    marginBottom: 8,
-    backgroundColor: "#f0f0f0",
-    borderRadius: 10,
-    padding: 4,
-  },
-  tab: { flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: "center" },
-  tabActive: { backgroundColor: "#2d5f3f" },
-  tabText: { fontSize: 14, fontWeight: "600", color: "#555" },
-  tabTextActive: { color: "#fff" },
-  listContent: { paddingHorizontal: 16, paddingBottom: 24 },
-  row: { flexDirection: "row", alignItems: "center", paddingVertical: 12 },
-  separator: { height: 1, backgroundColor: "#eee" },
-  numberBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  container: { flex: 1, backgroundColor: "#f5f6f4" },
+  hero: {
     backgroundColor: "#2d5f3f",
+    paddingTop: 28,
+    paddingBottom: 28,
+    paddingHorizontal: 24,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    marginBottom: 20,
+  },
+  heroTitle: { fontSize: 26, fontWeight: "800", color: "#fff" },
+  heroSubtitle: { fontSize: 14, color: "#d9ead9", marginTop: 6 },
+  listContent: { paddingHorizontal: 16, paddingBottom: 32 },
+  card: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 14,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 12,
+    marginRight: 14,
   },
-  numberText: { color: "#fff", fontWeight: "700" },
-  title: { flex: 1, fontSize: 16, color: "#222" },
-  star: { fontSize: 22, color: "#e0a30f", marginLeft: 8 },
-  empty: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32 },
-  emptyTitle: { fontSize: 18, fontWeight: "700", marginBottom: 8, textAlign: "center" },
-  emptyText: { fontSize: 14, color: "#666", textAlign: "center", lineHeight: 20 },
+  avatarLetter: { color: "#fff", fontSize: 20, fontWeight: "700" },
+  cardBody: { flex: 1 },
+  cardTitle: { fontSize: 16, fontWeight: "700", color: "#222" },
+  cardSubtitle: { fontSize: 13, color: "#888", marginTop: 2 },
+  chevron: { fontSize: 24, color: "#ccc", marginLeft: 8 },
+  newCategoryButton: {
+    marginTop: 8,
+    borderWidth: 1.5,
+    borderColor: "#2d5f3f",
+    borderStyle: "dashed",
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: "center",
+  },
+  newCategoryButtonText: { color: "#2d5f3f", fontWeight: "700", fontSize: 15 },
 });

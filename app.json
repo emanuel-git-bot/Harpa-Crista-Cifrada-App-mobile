@@ -20,6 +20,14 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Permite escolher imagens da sua galeria para adicionar às suas categorias."
+        }
+      ]
+    ]
   }
 }
