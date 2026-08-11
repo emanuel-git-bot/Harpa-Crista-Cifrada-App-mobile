@@ -4,12 +4,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useLibrary } from "../context/LibraryContext";
 import PromptModal from "../components/PromptModal";
+import { colors } from "../theme";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import type { Category } from "../types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Home">;
 
-const CARD_COLORS = ["#2d5f3f", "#8a4b2d", "#2d4f8a", "#7a2d8a", "#8a7c2d", "#2d8a7a"];
+const CARD_COLORS = ["#6B3A1F", "#8a4b2d", "#7a5a2d", "#8a3d3d", "#8a7c2d", "#5a6b3a"];
 
 function colorFor(id: string) {
   let hash = 0;
@@ -84,9 +85,9 @@ export default function HomeScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f5f6f4" },
+  container: { flex: 1, backgroundColor: colors.background },
   hero: {
-    backgroundColor: "#2d5f3f",
+    backgroundColor: colors.primary,
     paddingTop: 28,
     paddingBottom: 28,
     paddingHorizontal: 24,
@@ -95,12 +96,12 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   heroTitle: { fontSize: 26, fontWeight: "800", color: "#fff" },
-  heroSubtitle: { fontSize: 14, color: "#d9ead9", marginTop: 6 },
+  heroSubtitle: { fontSize: 14, color: "#EAD9C0", marginTop: 6 },
   listContent: { paddingHorizontal: 16, paddingBottom: 32 },
   card: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: colors.card,
     borderRadius: 16,
     padding: 14,
     shadowColor: "#000",
@@ -119,17 +120,17 @@ const styles = StyleSheet.create({
   },
   avatarLetter: { color: "#fff", fontSize: 20, fontWeight: "700" },
   cardBody: { flex: 1 },
-  cardTitle: { fontSize: 16, fontWeight: "700", color: "#222" },
-  cardSubtitle: { fontSize: 13, color: "#888", marginTop: 2 },
-  chevron: { fontSize: 24, color: "#ccc", marginLeft: 8 },
+  cardTitle: { fontSize: 16, fontWeight: "700", color: colors.textDark },
+  cardSubtitle: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
+  chevron: { fontSize: 24, color: colors.cardBorder, marginLeft: 8 },
   newCategoryButton: {
     marginTop: 8,
     borderWidth: 1.5,
-    borderColor: "#2d5f3f",
+    borderColor: colors.primary,
     borderStyle: "dashed",
     borderRadius: 16,
     paddingVertical: 16,
     alignItems: "center",
   },
-  newCategoryButtonText: { color: "#2d5f3f", fontWeight: "700", fontSize: 15 },
+  newCategoryButtonText: { color: colors.primary, fontWeight: "700", fontSize: 15 },
 });

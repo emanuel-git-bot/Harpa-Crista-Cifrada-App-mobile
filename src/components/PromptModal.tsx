@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { colors } from "../theme";
 
 type Props = {
   visible: boolean;
@@ -72,14 +73,14 @@ const styles = StyleSheet.create({
   card: {
     width: "100%",
     maxWidth: 360,
-    backgroundColor: "#fff",
+    backgroundColor: colors.card,
     borderRadius: 16,
     padding: 20,
   },
-  title: { fontSize: 17, fontWeight: "700", marginBottom: 12, color: "#222" },
+  title: { fontSize: 17, fontWeight: "700", marginBottom: 12, color: colors.textDark },
   input: {
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: colors.cardBorder,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -88,7 +89,7 @@ const styles = StyleSheet.create({
   },
   actions: { flexDirection: "row", justifyContent: "flex-end", gap: 12 },
   button: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8 },
-  buttonText: { fontSize: 15, color: "#666", fontWeight: "600" },
-  confirmButton: { backgroundColor: "#2d5f3f" },
+  buttonText: { fontSize: 15, color: colors.textMuted, fontWeight: "600" },
+  confirmButton: { backgroundColor: colors.primary },
   confirmText: { color: "#fff" },
 });

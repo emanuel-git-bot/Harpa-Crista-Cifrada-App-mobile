@@ -49,3 +49,6 @@ yarn-error.*
 # configuração local do Claude Code
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
+
+# imagem-fonte original do ícone (os ícones gerados ficam em assets/)
+/Gemini_Generated_Image_*.png
